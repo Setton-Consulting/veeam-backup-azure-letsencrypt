@@ -6,10 +6,15 @@ Script functioning is based on renewal via Certbot and Certbot-dns-cloudflare mo
 To Install on Ubuntu/Debian
 
 sudo apt update
+
 sudo apt install snapd
+
 sudo snap install core
+
 sudo snap refresh core
+
 sudo snap install --classic certbot
+
 sudo ln -s /snap/bin/certbot /usr/bin/certbot
 
 sudo snap install certbot-dns-cloudflare
