@@ -9,8 +9,8 @@
 ##      .Notes
 ##      NAME:  veeam_azure_ssl.sh
 ##      ORIGINAL NAME: veeam_azure_ssl.sh
-##      LASTEDIT: 15/05/2020
-##      VERSION: 1.0
+##      LASTEDIT: 2023-01-30
+##      VERSION: 1.1
 ##      KEYWORDS: Veeam, SSL, Let's Encrypt
    
 ##      .Link
@@ -20,27 +20,27 @@
 # Configurations
 ##
 # Endpoint URL for login action
-veeamDomain="YOURVEEAMAZUREAPPLIANCEDOMAIN"
+veeamDomain="YOURVEEAMAZUREAPPLIANCEDOMAIN" 
 veeamSSLPassword="YOURVEEAMSSLPASSWORD" #Introduce a password that will be use to merge the SSL into a .PFX
 veeamOutputPFXPath="/tmp/bundle.pfx"
 veeamOutputPFX64Path="/tmp/bundle64.pfx"
 veeamUsername="YOURVEEAMBACKUPUSER"
 veeamPassword="YOURVEEAMBACKUPPASS"
-veeamBackupAzureServer="https://YOURVEEAMBACKUPIP"
+veeamBackupAzureServer="https://YOURVEEAMBACKUPIP" #Use https://127.0.0.1 if running on the VM itself
 veeamBackupAzurePort="443" #Default Port
 
-veeamBearer=$(curl -X POST --header "Content-Type: application/x-www-form-urlencoded" --header "Accept: application/json" -d "Username=$veeamUsername&Password=$veeamPassword&refresh_token=&grant_type=Password&mfa_token=&mfa_code=" "$veeamBackupAzureServer:$veeamBackupAzurePort/api/oauth2/token" -k --silent | jq -r '.access_token')
+veeamBearer=$(curl -X POST --header "Content-Type: application/x-www-form-urlencoded" --header "accept: application/json" -d "mfa_token=&updater_token=&mfa_code=&sso_token=&short_lived_refresh_token=&saml_response=&refresh_token=&username=$veeamUsername&password=$veeamPassword&grant_type=Password" "$veeamBackupAzureServer:$veeamBackupAzurePort/api/oauth2/token" -k --silent | jq -r '.access_token')
 
 ##
 # Veeam Backup for Azure SSL PFX Certificate Creation. This part will combine Let's Encrypt SSL files into a valid .pfx for Microsoft for Azure
 ##
-openssl pkcs12 -export -out $veeamOutputPFXPath -inkey /root/.acme.sh/$veeamDomain/$veeamDomain.key -in /root/.acme.sh/$veeamDomain/fullchain.cer -password pass:$veeamSSLPassword
+openssl pkcs12 -export -out $veeamOutputPFXPath -inkey /etc/letsencrypt/live/$veeamDomain/privkey.pem -in /etc/letsencrypt/live/$veeamDomain/fullchain.pem -password pass:$veeamSSLPassword
 openssl base64 -in $veeamOutputPFXPath -out $veeamOutputPFX64Path
 
 ##
 # Veeam Backup for Azure SSL Certificate Push. This part will retrieve last Let's Encrypt Certificate and push it
 ##
-veeamVBAURL="$veeamBackupAzureServer:$veeamBackupAzurePort/api/v1/settings/certificates/webServer"
+veeamVBAURL="$veeamBackupAzureServer:$veeamBackupAzurePort/api/v4/settings/certificates/webServer"
 veeamOutputPFX=`cat $veeamOutputPFX64Path`
 
 curl -X PUT "$veeamVBAURL" -H "accept: */*" -H "Authorization: Bearer $veeamBearer" -H "Content-Type: application/json" -d "{\"webServerCertificatePfxBase64\":\"data:application/x-pkcs12;base64,$veeamOutputPFX\",\"webServerCertificatePfxPassword\":\"$veeamSSLPassword\"}" -k
